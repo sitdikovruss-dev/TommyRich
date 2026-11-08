@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tommy Stars</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background: linear-gradient(to right, #24243e, #302b63, #0f0c29);
+            color: white; font-family: 'Arial', sans-serif;
+            margin: 0; padding: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; height: 100vh; overflow: hidden;
+            user-select: none; -webkit-user-select: none;
+        }
+        .container { text-align: center; }
+        .balance { font-size: 32px; font-weight: bold; margin-bottom: 10px; text-shadow: 0 0 10px #e94560; }
+        .level { font-size: 18px; color: #aaa; margin-bottom: 20px; }
+        .cat {
+            width: 250px; height: 250px; border-radius: 50%; cursor: pointer;
+            transition: transform 0.1s; margin: 0 auto;
+            filter: drop-shadow(0 0 20px rgba(233, 69, 96, 0.5));
+            background-color: #333; /* Заглушка */
+            background-image: url('/photos/cat_level_1.png'); /* Твоя картинка */
+            background-size: cover; background-position: center;
+        }
+        .cat:active { transform: scale(0.9); }
+        .footer { margin-top: 30px; font-size: 14px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="balance">Баланс: <span id="balance">0.00</span> ⭐️</div>
+        <div class="level">Уровень: <span id="level">1</span> (XP: <span id="xp">0</span>/100)</div>
+        
+        <div id="cat" class="cat"></div>
+        
+        <div class="footer">Нажимай на Томми и зарабатывай!</div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        let balance = 0;
+        let level = 1;
+        let userId = tg.initDataUnsafe?.user?.id;
+
+        // Загрузка профиля при старте
+        async function loadProfile() {
+            if (!userId) {
+                document.getElementById('balance').innerText = "Ошибка (нет ID)";
+                return;
+            }
+            try {
+                let response = await fetch(`/api/profile?user_id=${userId}`);
+                let data = await response.json();
+                balance = data.balance;
+                level = data.level;
+                updateUI(data.balance, data.level, data.xp);
+            } catch (e) { console.log("Ошибка загрузки", e); }
+        }
+
+        function updateUI(bal, lvl, xp) {
+            document.getElementById('balance').innerText = bal.toFixed(2);
+            document.getElementById('level').innerText = lvl;
+            document.getElementById('xp').innerText = xp;
+        }
+
+        // Обработка клика
+        document.getElementById('cat').addEventListener('click', async () => {
+            tg.HapticFeedback.impactOccurred('light');
+            
+            // Мгновенное обновление для отзывчивости
+            let currentBal = parseFloat(document.getElementById('balance').innerText);
+            document.getElementById('balance').innerText = (currentBal + 0.01).toFixed(2);
+
+            if (userId) {
+                try {
+                    let response = await fetch('/api/click', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId })
+                    });
+                    let data = await response.json();
+                    updateUI(data.balance, data.level, data.xp);
+                } catch (e) { console.log("Ошибка клика", e); }
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+</html>
